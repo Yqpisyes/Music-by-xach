@@ -9,7 +9,9 @@
 ~~如果你喜欢这个网站或者本仓库，可以考虑捐助~~(bushi)
 
 
-![Screenshot_2026-02-24-12-32-24-509-edit_mark.via](https://imgs.977958.xyz/uploads//699d29f477eda_Screenshot_2026-02-24-12-32-24-509-edit_mark.via.jpg)
+[](https://imgs.977958.xyz/uploads//699d29f477eda_Screenshot_2026-02-24-12-32-24-509-edit_mark.via.jpg)
+
+<img src="https://imgs.977958.xyz/uploads//699d2f99bfa27_IMG_20260224_125640.jpg" alt="IMG_20260224_125640">
 
 
 ---
