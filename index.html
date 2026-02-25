@@ -129,30 +129,7 @@
 
         <div class="playlist-container">
             <ul class="playlist" style="list-style: none;">
-                <li class="song-item" data-src="music/再见了，我以恨意为燃料的人生... - Calia-林焰、星尘.mp3" data-lrc-file="再见了，我以恨意为燃料的人生... - Calia-林焰、星尘">
-                    <span class="song-name">再见了，我以恨意为燃料的人生</span>
-                </li>
-                <li class="song-item" data-src="music/DANÇA DO VERÃO - sma$her.mp3" data-lrc-file="DANÇA DO VERÃO - sma$her">
-                    <span class="song-name">DANÇA DO VERÃO - sma$her</span>
-                </li>
-                <li class="song-item" data-src="music/NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER.mp3" data-lrc-file="NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER">
-                    <span class="song-name">NO BATIDÃO - ZxKAI/SLXUGHTER</span>
-                </li>
-                <li class="song-item" data-src="music/莫愁乡 - 亞細亞曠世奇才.mp3" data-lrc-file="莫愁乡 - 亞細亞曠世奇才">
-                    <span class="song-name">莫愁乡 - 亞細亞曠世奇才</span>
-                </li>
-                <li class="song-item" data-src="music/The King - Paper.MAN.mp3" data-lrc-file="The King - Paper.MAN">
-                    <span class="song-name">The King - Paper.MAN</span>
-                </li>
-                <li class="song-item" data-src="music/2step - Ed Sheeran.mp3" data-lrc-file="2step - Ed Sheeran">
-                    <span class="song-name">2step - Ed Sheeran</span>
-                </li>
-                <li class="song-item" data-src="music/反乌托邦（SpuChestnut Remix） - 抵达彼岸Null.mp3" data-lrc-file="反乌托邦（SpuChestnut Remix） - 抵达彼岸Null">
-                    <span class="song-name">反乌托邦 - 抵达彼岸Null</span>
-                </li>
-                <li class="song-item" data-src="music/精卫（万物终归向海） - 银翼杀手.mp3" data-lrc-file="精卫（万物终归向海） - 银翼杀手">
-                    <span class="song-name">精卫 - 银翼杀手</span>
-                </li>
+                <!-- 歌曲列表将由JavaScript动态生成 -->
             </ul>
         </div>
     </div>
@@ -169,8 +146,9 @@
         const titleDisplay = document.getElementById('current-title');
         const lyricsWrapper = document.getElementById('lyrics-wrapper');
         const lyricBox = document.getElementById('lyric-box');
-        const items = Array.from(document.querySelectorAll('.song-item'));
-
+        const playlistContainer = document.querySelector('.playlist-container .playlist');
+        
+        let musicList = [];          // 存储从JSON加载的歌曲列表
         let currentIndex = -1;
         let isPlayingMusic = false;
         let lyricData = [];
@@ -185,15 +163,24 @@
             lines.forEach(line => {
                 const matches = pattern.exec(line);
                 if (matches) {
-                    const timeKey = (parseInt(matches[1]) * 60 + parseInt(matches[2]) + parseInt(matches[3]) / 1000).toFixed(3);
+                    const minutes = parseInt(matches[1]);
+                    const seconds = parseInt(matches[2]);
+                    const milliseconds = parseInt(matches[3].padEnd(3, '0'));
+                    const timeKey = (minutes * 60 + seconds + milliseconds / 1000).toFixed(3);
                     const content = matches[4].trim();
                     if (content) {
-                        if (tempMap[timeKey]) tempMap[timeKey] += `<span class="translation">${content}</span>`;
-                        else tempMap[timeKey] = content;
+                        if (tempMap[timeKey]) {
+                            // 如果有相同时间戳，视为翻译，用span包裹
+                            tempMap[timeKey] += `<span class="translation">${content}</span>`;
+                        } else {
+                            tempMap[timeKey] = content;
+                        }
                     }
                 }
             });
-            for (let time in tempMap) result.push({ time: parseFloat(time), content: tempMap[time] });
+            for (let time in tempMap) {
+                result.push({ time: parseFloat(time), content: tempMap[time] });
+            }
             result.sort((a, b) => a.time - b.time);
             return result;
         }
@@ -211,33 +198,57 @@
         }
 
         function renderLyrics() {
+            if (!lyricData || lyricData.length === 0) {
+                lyricsWrapper.innerHTML = '<div class="lyric-line">暂无歌词</div>';
+                return;
+            }
             lyricsWrapper.innerHTML = lyricData.map(line => `<div class="lyric-line">${line.content}</div>`).join('');
             syncLyricPos(0);
         }
 
         function syncLyricPos(index) {
             const lines = document.querySelectorAll('.lyric-line');
-            if (!lines[index]) return;
+            if (!lines.length || !lines[index]) return;
+            
+            // 更新激活状态
             lines.forEach((l, i) => l.classList.toggle('active', i === index));
-            const targetOffset = 110 - lines[index].offsetTop - (lines[index].offsetHeight / 2);
+            
+            // 计算偏移使当前歌词居中
+            const containerHeight = lyricBox.clientHeight;
+            const lineHeight = lines[index].offsetHeight;
+            const lineTop = lines[index].offsetTop;
+            // 目标位置：让当前歌词位于容器中间偏上一点
+            const targetOffset = (containerHeight / 2) - lineTop - (lineHeight / 2);
             lyricsWrapper.style.transform = `translateY(${targetOffset}px)`;
         }
 
-        // 打字机
+        // 打字机效果
         const phrases = ["答案在路口，不在尽头 🌿", "愿旋律治愈你的今日份不开心 ✨"];
         let phraseIdx = 0, charIdx = 0, isDeleting = false;
         function typeEffect() {
             if (isPlayingMusic) return;
             const current = phrases[phraseIdx];
             titleDisplay.innerText = current.substring(0, charIdx);
+            
             let speed = isDeleting ? 60 : 120;
-            if (!isDeleting && charIdx === current.length) { speed = 2000; isDeleting = true; }
-            else if (isDeleting && charIdx === 0) { isDeleting = false; phraseIdx = (phraseIdx + 1) % phrases.length; speed = 500; }
-            else { charIdx = isDeleting ? charIdx - 1 : charIdx + 1; }
+            
+            if (!isDeleting && charIdx === current.length) {
+                speed = 2000; // 停留时间
+                isDeleting = true;
+            } else if (isDeleting && charIdx === 0) {
+                isDeleting = false;
+                phraseIdx = (phraseIdx + 1) % phrases.length;
+                speed = 500;
+            } else {
+                charIdx = isDeleting ? charIdx - 1 : charIdx + 1;
+            }
+            
             typeTimer = setTimeout(typeEffect, speed);
         }
 
         async function playSong(index) {
+            if (!musicList.length || index < 0 || index >= musicList.length) return;
+            
             isPlayingMusic = true;
             clearTimeout(typeTimer);
             document.getElementById('cursor').style.display = 'none';
@@ -246,48 +257,166 @@
             lyricBox.classList.add('lyrics-active');
             
             currentIndex = index;
-            items.forEach((li, i) => li.classList.toggle('active', i === currentIndex));
-            const item = items[currentIndex];
-            audio.src = item.getAttribute('data-src');
-            titleDisplay.innerText = item.querySelector('.song-name').innerText;
             
-            await loadLyrics(item.getAttribute('data-lrc-file'));
-            audio.play();
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
+            // 更新列表激活状态
+            const songItems = document.querySelectorAll('.song-item');
+            songItems.forEach((li, i) => li.classList.toggle('active', i === currentIndex));
+            
+            const item = musicList[currentIndex];
+            audio.src = item.src;
+            titleDisplay.innerText = item.name;
+            
+            await loadLyrics(item.lrc);
+            
+            try {
+                await audio.play();
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            } catch (e) {
+                console.log('播放失败:', e);
+                // 自动播放可能被浏览器阻止
+                isPlayingMusic = false;
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            }
         }
 
+        // 播放按钮点击
         playBtn.onclick = () => {
-            if (currentIndex === -1) { playSong(0); return; }
-            audio.paused ? audio.play() : audio.pause();
-            playIcon.style.display = audio.paused ? 'block' : 'none';
-            pauseIcon.style.display = audio.paused ? 'none' : 'block';
+            if (currentIndex === -1 && musicList.length > 0) {
+                playSong(0);
+                return;
+            }
+            
+            if (audio.paused) {
+                audio.play().then(() => {
+                    playIcon.style.display = 'none';
+                    pauseIcon.style.display = 'block';
+                }).catch(e => console.log('播放失败:', e));
+            } else {
+                audio.pause();
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            }
         };
 
+        // 进度更新
         audio.ontimeupdate = () => {
             if (!audio.duration) return;
-            progressBar.style.width = (audio.currentTime / audio.duration) * 100 + '%';
+            const percent = (audio.currentTime / audio.duration) * 100;
+            progressBar.style.width = percent + '%';
             currTimeText.innerText = formatTime(audio.currentTime);
-            const index = lyricData.findIndex((line, i) => {
-                const next = lyricData[i + 1];
-                return audio.currentTime >= line.time && (!next || audio.currentTime < next.time);
-            });
-            if (index !== -1) syncLyricPos(index);
+            
+            // 歌词同步
+            if (lyricData.length > 0) {
+                let activeIndex = -1;
+                for (let i = 0; i < lyricData.length; i++) {
+                    const current = lyricData[i];
+                    const next = lyricData[i + 1];
+                    
+                    if (audio.currentTime >= current.time && (!next || audio.currentTime < next.time)) {
+                        activeIndex = i;
+                        break;
+                    }
+                }
+                
+                if (activeIndex !== -1 && activeIndex !== currentActiveLine) {
+                    currentActiveLine = activeIndex;
+                    syncLyricPos(activeIndex);
+                }
+            }
         };
 
+        // 记录当前激活的歌词行，避免重复更新
+        let currentActiveLine = -1;
+
+        // 点击进度条跳转
         progressContainer.onclick = (e) => {
             const rect = progressContainer.getBoundingClientRect();
-            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+            const clickPos = (e.clientX - rect.left) / rect.width;
+            audio.currentTime = clickPos * audio.duration;
         };
 
-        audio.onloadedmetadata = () => { durationText.innerText = formatTime(audio.duration); };
-        audio.onended = () => playSong((currentIndex + 1) % items.length);
-        items.forEach((li, idx) => li.onclick = () => playSong(idx));
+        audio.onloadedmetadata = () => { 
+            durationText.innerText = formatTime(audio.duration);
+        };
+        
+        audio.onended = () => {
+            playSong((currentIndex + 1) % musicList.length);
+        };
 
         function formatTime(secs) {
-            return `${Math.floor(secs/60).toString().padStart(2,'0')}:${Math.floor(secs%60).toString().padStart(2,'0')}`;
+            if (isNaN(secs)) return '00:00';
+            const mins = Math.floor(secs / 60);
+            const seconds = Math.floor(secs % 60);
+            return `${mins.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }
+
+        // 从JSON加载音乐列表并生成DOM
+        async function loadMusicList() {
+            try {
+                const response = await fetch('musiclist.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                musicList = await response.json();
+                
+                // 清空现有列表
+                playlistContainer.innerHTML = '';
+                
+                // 动态生成歌曲项
+                musicList.forEach((song, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'song-item';
+                    li.setAttribute('data-src', song.src);
+                    li.setAttribute('data-lrc-file', song.lrc);
+                    
+                    const span = document.createElement('span');
+                    span.className = 'song-name';
+                    span.innerText = song.name;
+                    
+                    li.appendChild(span);
+                    li.onclick = () => playSong(index);
+                    playlistContainer.appendChild(li);
+                });
+                
+                // 如果有歌曲，默认选中第一首但不播放
+                if (musicList.length > 0) {
+                    const firstItem = document.querySelector('.song-item');
+                    if (firstItem) {
+                        // 只显示标题，不自动播放
+                        titleDisplay.innerText = musicList[0].name;
+                    }
+                }
+            } catch (error) {
+                console.error('加载音乐列表失败：', error);
+                playlistContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #ff9999;">加载歌曲失败，请检查 musiclist.json 是否存在</li>';
+            }
+        }
+
+        // 启动
+        loadMusicList();
         typeEffect();
+
+        // 处理音频加载错误
+        audio.onerror = () => {
+            console.error('音频加载失败:', audio.src);
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+        };
+
+        // 当音频暂停时
+        audio.onpause = () => {
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+        };
+
+        // 当音频播放时
+        audio.onplay = () => {
+            playIcon.style.display = 'none';
+            pauseIcon.style.display = 'block';
+            isPlayingMusic = true;
+        };
     </script>
 </body>
 </html>
