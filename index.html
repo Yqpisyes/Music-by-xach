@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Xa_CHのMusic</title>
+    <title>Xa_CHのMusic · 动态歌单</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -88,10 +88,15 @@
         .time-info { display: flex; justify-content: space-between; font-size: 0.65rem; opacity: 0.5; font-family: monospace; }
         .play-btn { width: 48px; height: 48px; background: #fff; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .play-btn svg { fill: #2c3e50; width: 20px; height: 20px; }
+        
+        /* 动态列表项样式 (与之前一致) */
         .song-item { padding: 12px 18px; background: rgba(255, 255, 255, 0.05); margin-bottom: 8px; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
         .song-item:hover { background: rgba(255, 255, 255, 0.08); }
         .song-item.active { background: #fff; color: #2c3e50; }
         .song-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; }
+
+        /* 加载提示 (可选) */
+        .playlist-loading { color: rgba(255,255,255,0.5); text-align: center; padding: 15px; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -127,167 +132,312 @@
             </div>
         </div>
 
+        <!-- 动态歌单容器 (原静态 li 已移除) -->
         <div class="playlist-container">
             <ul class="playlist" style="list-style: none;">
-                <li class="song-item" data-src="music/再见了，我以恨意为燃料的人生... - Calia-林焰、星尘.mp3" data-lrc-file="再见了，我以恨意为燃料的人生... - Calia-林焰、星尘">
-                    <span class="song-name">再见了，我以恨意为燃料的人生</span>
-                </li>
-                <li class="song-item" data-src="music/DANÇA DO VERÃO - sma$her.mp3" data-lrc-file="DANÇA DO VERÃO - sma$her">
-                    <span class="song-name">DANÇA DO VERÃO - sma$her</span>
-                </li>
-                <li class="song-item" data-src="music/NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER.mp3" data-lrc-file="NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER">
-                    <span class="song-name">NO BATIDÃO - ZxKAI/SLXUGHTER</span>
-                </li>
-                <li class="song-item" data-src="music/莫愁乡 - 亞細亞曠世奇才.mp3" data-lrc-file="莫愁乡 - 亞細亞曠世奇才">
-                    <span class="song-name">莫愁乡 - 亞細亞曠世奇才</span>
-                </li>
-                <li class="song-item" data-src="music/The King - Paper.MAN.mp3" data-lrc-file="The King - Paper.MAN">
-                    <span class="song-name">The King - Paper.MAN</span>
-                </li>
-                <li class="song-item" data-src="music/2step - Ed Sheeran.mp3" data-lrc-file="2step - Ed Sheeran">
-                    <span class="song-name">2step - Ed Sheeran</span>
-                </li>
-                <li class="song-item" data-src="music/反乌托邦（SpuChestnut Remix） - 抵达彼岸Null.mp3" data-lrc-file="反乌托邦（SpuChestnut Remix） - 抵达彼岸Null">
-                    <span class="song-name">反乌托邦 - 抵达彼岸Null</span>
-                </li>
-                <li class="song-item" data-src="music/精卫（万物终归向海） - 银翼杀手.mp3" data-lrc-file="精卫（万物终归向海） - 银翼杀手">
-                    <span class="song-name">精卫 - 银翼杀手</span>
-                </li>
+                <!-- 这里会由 JavaScript 动态填充 -->
+                <li class="playlist-loading">加载歌单中...</li>
             </ul>
         </div>
     </div>
 
     <script>
-        const audio = document.getElementById('audio-engine');
-        const playBtn = document.getElementById('play-pause-btn');
-        const playIcon = document.getElementById('play-icon');
-        const pauseIcon = document.getElementById('pause-icon');
-        const progressBar = document.getElementById('progress-bar');
-        const progressContainer = document.getElementById('progress-container');
-        const currTimeText = document.getElementById('current-time');
-        const durationText = document.getElementById('duration');
-        const titleDisplay = document.getElementById('current-title');
-        const lyricsWrapper = document.getElementById('lyrics-wrapper');
-        const lyricBox = document.getElementById('lyric-box');
-        const items = Array.from(document.querySelectorAll('.song-item'));
+        (function() {
+            // ----- DOM 元素 -----
+            const audio = document.getElementById('audio-engine');
+            const playBtn = document.getElementById('play-pause-btn');
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const progressBar = document.getElementById('progress-bar');
+            const progressContainer = document.getElementById('progress-container');
+            const currTimeText = document.getElementById('current-time');
+            const durationText = document.getElementById('duration');
+            const titleDisplay = document.getElementById('current-title');
+            const lyricsWrapper = document.getElementById('lyrics-wrapper');
+            const lyricBox = document.getElementById('lyric-box');
+            const playlistUl = document.querySelector('.playlist');  // <ul>
 
-        let currentIndex = -1;
-        let isPlayingMusic = false;
-        let lyricData = [];
-        let typeTimer = null;
+            // ----- 状态变量 -----
+            let songList = [];                // 从外部 JSON 读取的歌曲列表
+            let currentIndex = -1;             // 当前播放索引
+            let isPlayingMusic = false;        // 是否正在播放 (控制打字机)
+            let lyricData = [];                 // 当前歌词数据
+            let typeTimer = null;               // 打字机定时器
 
-        // 解析歌词
-        function parseLyric(text) {
-            const lines = text.split('\n');
-            const result = [];
-            const pattern = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
-            const tempMap = {};
-            lines.forEach(line => {
-                const matches = pattern.exec(line);
-                if (matches) {
-                    const timeKey = (parseInt(matches[1]) * 60 + parseInt(matches[2]) + parseInt(matches[3]) / 1000).toFixed(3);
-                    const content = matches[4].trim();
-                    if (content) {
-                        if (tempMap[timeKey]) tempMap[timeKey] += `<span class="translation">${content}</span>`;
-                        else tempMap[timeKey] = content;
+            // ----- 辅助函数：时间格式化 -----
+            function formatTime(secs) {
+                if (isNaN(secs)) return '00:00';
+                return `${Math.floor(secs/60).toString().padStart(2,'0')}:${Math.floor(secs%60).toString().padStart(2,'0')}`;
+            }
+
+            // ----- 歌词解析 (与原来一致) -----
+            function parseLyric(text) {
+                const lines = text.split('\n');
+                const result = [];
+                const pattern = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
+                const tempMap = {};
+                lines.forEach(line => {
+                    const matches = pattern.exec(line);
+                    if (matches) {
+                        const timeKey = (parseInt(matches[1]) * 60 + parseInt(matches[2]) + parseInt(matches[3]) / 1000).toFixed(3);
+                        const content = matches[4].trim();
+                        if (content) {
+                            if (tempMap[timeKey]) tempMap[timeKey] += `<span class="translation">${content}</span>`;
+                            else tempMap[timeKey] = content;
+                        }
                     }
-                }
-            });
-            for (let time in tempMap) result.push({ time: parseFloat(time), content: tempMap[time] });
-            result.sort((a, b) => a.time - b.time);
-            return result;
-        }
+                });
+                for (let time in tempMap) result.push({ time: parseFloat(time), content: tempMap[time] });
+                result.sort((a, b) => a.time - b.time);
+                return result;
+            }
 
-        async function loadLyrics(fileName) {
-            try {
-                const response = await fetch(`./lrc/${fileName}.lrc`);
-                const text = await response.text();
-                lyricData = parseLyric(text);
-                renderLyrics();
-            } catch (err) {
-                lyricData = [{time: 0, content: "暂无歌词"}];
+            // ----- 加载歌词 (根据文件名) -----
+            async function loadLyrics(fileName) {
+                try {
+                    const response = await fetch(`./lrc/${fileName}.lrc`);
+                    if (!response.ok) throw new Error('歌词文件不存在');
+                    const text = await response.text();
+                    lyricData = parseLyric(text);
+                } catch (err) {
+                    lyricData = [{ time: 0, content: "暂无歌词" }];
+                }
                 renderLyrics();
             }
-        }
 
-        function renderLyrics() {
-            lyricsWrapper.innerHTML = lyricData.map(line => `<div class="lyric-line">${line.content}</div>`).join('');
-            syncLyricPos(0);
-        }
+            // 渲染歌词到 wrapper
+            function renderLyrics() {
+                lyricsWrapper.innerHTML = lyricData.map(line => `<div class="lyric-line">${line.content}</div>`).join('');
+                syncLyricPos(0);
+            }
 
-        function syncLyricPos(index) {
-            const lines = document.querySelectorAll('.lyric-line');
-            if (!lines[index]) return;
-            lines.forEach((l, i) => l.classList.toggle('active', i === index));
-            const targetOffset = 110 - lines[index].offsetTop - (lines[index].offsetHeight / 2);
-            lyricsWrapper.style.transform = `translateY(${targetOffset}px)`;
-        }
+            // 歌词滚动定位
+            function syncLyricPos(index) {
+                const lines = document.querySelectorAll('.lyric-line');
+                if (!lines.length) return;
+                if (!lines[index]) index = 0;
+                lines.forEach((l, i) => l.classList.toggle('active', i === index));
+                const targetOffset = 110 - (lines[index]?.offsetTop || 0) - (lines[index]?.offsetHeight / 2 || 0);
+                lyricsWrapper.style.transform = `translateY(${targetOffset}px)`;
+            }
 
-        // 打字机
-        const phrases = ["答案在路口，不在尽头 🌿", "愿旋律治愈你的今日份不开心 ✨"];
-        let phraseIdx = 0, charIdx = 0, isDeleting = false;
-        function typeEffect() {
-            if (isPlayingMusic) return;
-            const current = phrases[phraseIdx];
-            titleDisplay.innerText = current.substring(0, charIdx);
-            let speed = isDeleting ? 60 : 120;
-            if (!isDeleting && charIdx === current.length) { speed = 2000; isDeleting = true; }
-            else if (isDeleting && charIdx === 0) { isDeleting = false; phraseIdx = (phraseIdx + 1) % phrases.length; speed = 500; }
-            else { charIdx = isDeleting ? charIdx - 1 : charIdx + 1; }
-            typeTimer = setTimeout(typeEffect, speed);
-        }
+            // ----- 打字机效果 (纯装饰，无音乐时显示) -----
+            const phrases = ["答案在路口，不在尽头 🌿", "愿旋律治愈你的今日份不开心 ✨"];
+            let phraseIdx = 0, charIdx = 0, isDeleting = false;
 
-        async function playSong(index) {
-            isPlayingMusic = true;
-            clearTimeout(typeTimer);
-            document.getElementById('cursor').style.display = 'none';
-            
-            // 手机端展开歌词
-            lyricBox.classList.add('lyrics-active');
-            
-            currentIndex = index;
-            items.forEach((li, i) => li.classList.toggle('active', i === currentIndex));
-            const item = items[currentIndex];
-            audio.src = item.getAttribute('data-src');
-            titleDisplay.innerText = item.querySelector('.song-name').innerText;
-            
-            await loadLyrics(item.getAttribute('data-lrc-file'));
-            audio.play();
-            playIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
-        }
+            function typeEffect() {
+                // 只有在非播放状态才执行打字机
+                if (isPlayingMusic) return;
 
-        playBtn.onclick = () => {
-            if (currentIndex === -1) { playSong(0); return; }
-            audio.paused ? audio.play() : audio.pause();
-            playIcon.style.display = audio.paused ? 'block' : 'none';
-            pauseIcon.style.display = audio.paused ? 'none' : 'block';
-        };
+                const current = phrases[phraseIdx];
+                titleDisplay.innerText = current.substring(0, charIdx);
+                let speed = isDeleting ? 60 : 120;
 
-        audio.ontimeupdate = () => {
-            if (!audio.duration) return;
-            progressBar.style.width = (audio.currentTime / audio.duration) * 100 + '%';
-            currTimeText.innerText = formatTime(audio.currentTime);
-            const index = lyricData.findIndex((line, i) => {
-                const next = lyricData[i + 1];
-                return audio.currentTime >= line.time && (!next || audio.currentTime < next.time);
+                if (!isDeleting && charIdx === current.length) {
+                    speed = 2000;
+                    isDeleting = true;
+                } else if (isDeleting && charIdx === 0) {
+                    isDeleting = false;
+                    phraseIdx = (phraseIdx + 1) % phrases.length;
+                    speed = 500;
+                } else {
+                    charIdx = isDeleting ? charIdx - 1 : charIdx + 1;
+                }
+                typeTimer = setTimeout(typeEffect, speed);
+            }
+
+            // 启动打字机 (最初调用)
+            typeEffect();
+
+            // ----- 播放核心函数 (接收索引) -----
+            async function playSong(index) {
+                if (!songList.length || index < 0 || index >= songList.length) return;
+
+                // 停止打字机，显示歌名
+                isPlayingMusic = true;
+                clearTimeout(typeTimer);
+                document.getElementById('cursor').style.display = 'none';
+
+                // 手机端展开歌词
+                lyricBox.classList.add('lyrics-active');
+
+                // 更新索引与UI active类
+                currentIndex = index;
+                const allItems = document.querySelectorAll('.song-item');
+                allItems.forEach((li, i) => li.classList.toggle('active', i === currentIndex));
+
+                const song = songList[currentIndex];
+                audio.src = song.src;                // 音乐路径
+                titleDisplay.innerText = song.name;   // 显示歌名
+
+                // 加载对应歌词
+                await loadLyrics(song.lrc);
+
+                // 播放
+                try {
+                    await audio.play();
+                    playIcon.style.display = 'none';
+                    pauseIcon.style.display = 'block';
+                } catch (e) {
+                    console.warn('自动播放失败，等待用户交互');
+                    // 如果浏览器阻止自动播放，至少让UI处于暂停状态
+                    isPlayingMusic = false;
+                    playIcon.style.display = 'block';
+                    pauseIcon.style.display = 'none';
+                }
+            }
+
+            // ----- 渲染歌单 (根据songList) -----
+            function renderPlaylist(songs) {
+                if (!songs.length) {
+                    playlistUl.innerHTML = '<li class="playlist-loading">暂无歌曲</li>';
+                    return;
+                }
+                const html = songs.map((song, idx) => `
+                    <li class="song-item" data-index="${idx}">
+                        <span class="song-name">${escapeHtml(song.name)}</span>
+                    </li>
+                `).join('');
+                playlistUl.innerHTML = html;
+            }
+
+            // 简单的防XSS转义 (歌曲名可能包含符号)
+            function escapeHtml(unsafe) {
+                return unsafe.replace(/[&<>"]/g, function(m) {
+                    if (m === '&') return '&amp;';
+                    if (m === '<') return '&lt;';
+                    if (m === '>') return '&gt;';
+                    if (m === '"') return '&quot;';
+                    return m;
+                });
+            }
+
+            // ----- 从外部 JSON 加载歌单 -----
+            async function loadPlaylistFromJSON() {
+                try {
+                    const response = await fetch('./playlist.json');  // 假设与index.html同目录
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    // 预期格式: [{ name, src, lrc }, ...]
+                    songList = data;
+                } catch (err) {
+                    console.error('加载歌单失败:', err);
+                    // 降级提示，或者可以保留几条默认？但根据需求，不写死，所以显示错误
+                    songList = [];
+                }
+
+                // 无论成功与否，重新渲染列表
+                renderPlaylist(songList);
+
+                // 如果有歌曲但没有播放，保持未播放状态，打字机继续
+                if (songList.length > 0) {
+                    // 可以选择默认高亮第一项？但为了符合原行为(无选中)，不做自动高亮
+                    // 但移除加载提示后可能空白，可以接受
+                } else {
+                    // 空列表时显示占位
+                }
+            }
+
+            // ----- 事件绑定 -----
+
+            // 1. 播放/暂停按钮
+            playBtn.onclick = () => {
+                if (songList.length === 0) return;  // 无歌单不操作
+
+                if (currentIndex === -1) {
+                    // 从未选择任何歌曲 → 播放第一首
+                    playSong(0);
+                    return;
+                }
+
+                if (audio.paused) {
+                    // 当前暂停 → 播放
+                    audio.play().then(() => {
+                        playIcon.style.display = 'none';
+                        pauseIcon.style.display = 'block';
+                        isPlayingMusic = true;
+                        clearTimeout(typeTimer);
+                        document.getElementById('cursor').style.display = 'none';
+                        // 恢复歌名显示 (可能被打字机覆盖)
+                        titleDisplay.innerText = songList[currentIndex].name;
+                    }).catch(e => console.warn('播放失败', e));
+                } else {
+                    // 正在播放 → 暂停
+                    audio.pause();
+                    playIcon.style.display = 'block';
+                    pauseIcon.style.display = 'none';
+                    isPlayingMusic = false;
+                    // 重启打字机 (让文字重新出现)
+                    clearTimeout(typeTimer);
+                    typeEffect();
+                }
+            };
+
+            // 2. 进度条点击跳转
+            progressContainer.onclick = (e) => {
+                if (!audio.duration) return;
+                const rect = progressContainer.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = pct * audio.duration;
+            };
+
+            // 3. 音频时间更新 → 进度条 & 歌词同步
+            audio.ontimeupdate = () => {
+                if (!audio.duration) return;
+                progressBar.style.width = (audio.currentTime / audio.duration) * 100 + '%';
+                currTimeText.innerText = formatTime(audio.currentTime);
+
+                // 歌词高亮
+                if (lyricData.length) {
+                    let activeIdx = -1;
+                    for (let i = 0; i < lyricData.length; i++) {
+                        const line = lyricData[i];
+                        const next = lyricData[i + 1];
+                        if (audio.currentTime >= line.time && (!next || audio.currentTime < next.time)) {
+                            activeIdx = i;
+                            break;
+                        }
+                    }
+                    if (activeIdx !== -1) syncLyricPos(activeIdx);
+                }
+            };
+
+            // 4. 元数据加载完成显示总时长
+            audio.onloadedmetadata = () => {
+                durationText.innerText = formatTime(audio.duration);
+            };
+
+            // 5. 播放结束自动下一首 (循环)
+            audio.onended = () => {
+                if (songList.length === 0) return;
+                const nextIndex = (currentIndex + 1) % songList.length;
+                playSong(nextIndex);
+            };
+
+            // 6. 使用事件委托监听歌单点击 (动态添加)
+            playlistUl.addEventListener('click', (e) => {
+                const li = e.target.closest('.song-item');
+                if (!li) return;
+                const index = li.getAttribute('data-index');
+                if (index !== null) {
+                    playSong(parseInt(index, 10));
+                }
             });
-            if (index !== -1) syncLyricPos(index);
-        };
 
-        progressContainer.onclick = (e) => {
-            const rect = progressContainer.getBoundingClientRect();
-            audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
-        };
+            // 7. 音频错误处理 (比如文件缺失)
+            audio.onerror = () => {
+                console.warn('音频加载失败，尝试下一首');
+                if (songList.length > 0 && currentIndex !== -1) {
+                    // 简单跳过，也可以提示
+                    audio.onended(); // 触发结束行为
+                }
+            };
 
-        audio.onloadedmetadata = () => { durationText.innerText = formatTime(audio.duration); };
-        audio.onended = () => playSong((currentIndex + 1) % items.length);
-        items.forEach((li, idx) => li.onclick = () => playSong(idx));
+            // ----- 初始化：加载外部歌单 -----
+            loadPlaylistFromJSON();
 
-        function formatTime(secs) {
-            return `${Math.floor(secs/60).toString().padStart(2,'0')}:${Math.floor(secs%60).toString().padStart(2,'0')}`;
-        }
-        typeEffect();
+            // 暴露部分变量便于调试 (非必须)
+        })();
     </script>
 </body>
 </html>
