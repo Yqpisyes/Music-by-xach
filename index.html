@@ -24,6 +24,8 @@
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
             width: 92%; max-width: 420px; border: 1px solid rgba(255, 255, 255, 0.2);
             display: flex; flex-direction: column; transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            /* 确保所有内容都在圆角背景内，避免溢出 */
+            overflow: hidden;
         }
 
         /* --- 歌词折叠逻辑 --- */
@@ -54,26 +56,48 @@
         .lyric-line.active { opacity: 1; transform: scale(1.05); font-weight: bold; }
         .translation { display: block; font-size: 0.8em; opacity: 0.7; margin-top: 4px; font-weight: normal; }
 
-        /* --- 响应式布局（电脑端保持不变） --- */
+        /* --- 响应式布局（电脑端优化滚动） --- */
         @media (min-width: 850px) {
             .player-card { max-width: 950px; flex-direction: row; gap: 40px; padding: 40px; }
             .main-player-part { flex: 1.2; }
-            .playlist-container { flex: 0.8; height: 480px; }
+            .playlist-container {
+                flex: 0.8;
+                height: 480px;
+                overflow-y: auto; /* 让列表可以滚动 */
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255,255,255,0.3) transparent;
+            }
+            /* webkit 滚动条样式 */
+            .playlist-container::-webkit-scrollbar {
+                width: 6px;
+            }
+            .playlist-container::-webkit-scrollbar-thumb {
+                background: rgba(255,255,255,0.3);
+                border-radius: 3px;
+            }
             .lyrics-container { max-height: 220px; opacity: 1; margin: 20px 0; } /* 电脑端默认展开 */
         }
 
-        /* 手机端列表滚动优化 */
+        /* 手机端：采用flex弹性限制，防止列表撑破卡片背景 */
         @media (max-width: 849px) {
-            .player-card { max-height: 95vh; }
+            .player-card {
+                max-height: 95vh;          /* 限制卡片最大高度，避免超出屏幕 */
+                overflow: hidden;           /* 裁切溢出部分，配合内部滚动 */
+            }
+            .main-player-part {
+                flex-shrink: 0;             /* 头部内容不压缩，高度由内部决定 */
+            }
             .playlist-container {
-                max-height: 300px;
-                overflow-y: auto;
+                flex: 1 1 auto;             /* 占用剩余空间，允许收缩 */
+                min-height: 0;               /* 配合flex收缩，强制溢出滚动 */
+                overflow-y: auto;            /* 列表过长时内部滚动 */
                 margin-top: 10px;
                 border-top: 1px solid rgba(255,255,255,0.1);
                 padding-top: 10px;
-                scrollbar-width: none;
+                /* 移除原先固定的max-height，让flex动态控制 */
+                scrollbar-width: none;       /* 隐藏滚动条（火狐） */
             }
-            .playlist-container::-webkit-scrollbar { display: none; }
+            .playlist-container::-webkit-scrollbar { display: none; } /* 隐藏滚动条（Chrome/Safari） */
         }
 
         /* 其他控件样式 */
@@ -89,14 +113,17 @@
         .play-btn { width: 48px; height: 48px; background: #fff; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .play-btn svg { fill: #2c3e50; width: 20px; height: 20px; }
         
-        /* 动态列表项样式 (与之前一致) */
+        /* 动态列表项样式 */
         .song-item { padding: 12px 18px; background: rgba(255, 255, 255, 0.05); margin-bottom: 8px; border-radius: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
         .song-item:hover { background: rgba(255, 255, 255, 0.08); }
         .song-item.active { background: #fff; color: #2c3e50; }
         .song-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; }
 
-        /* 加载提示 (可选) */
+        /* 加载提示 */
         .playlist-loading { color: rgba(255,255,255,0.5); text-align: center; padding: 15px; font-size: 0.8rem; }
+
+        /* 重置ul默认内边距，使列表对齐 */
+        .playlist { padding-left: 0; margin: 0; }
     </style>
 </head>
 <body>
@@ -132,7 +159,7 @@
             </div>
         </div>
 
-        <!-- 动态歌单容器 (原静态 li 已移除) -->
+        <!-- 动态歌单容器 -->
         <div class="playlist-container">
             <ul class="playlist" style="list-style: none;">
                 <!-- 这里会由 JavaScript 动态填充 -->
