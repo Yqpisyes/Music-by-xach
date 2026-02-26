@@ -10,6 +10,16 @@
         "lrc":  "DANÇA DO VERÃO - sma$her"
     },
     {
+        "name":  "MONTAGEM - FELL DOWN - KVKS、7ovey",
+        "src":  "music/MONTAGEM - FELL DOWN - KVKS、7ovey.mp3",
+        "lrc":  ""
+    },
+    {
+        "name":  "Montagem Miau - Lenar",
+        "src":  "music/Montagem Miau - Lenar.mp3",
+        "lrc":  ""
+    },
+    {
         "name":  "NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER",
         "src":  "music/NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER.mp3",
         "lrc":  "NO BATIDÃO (Explicit) - ZxKAI、SLXUGHTER"
@@ -28,6 +38,26 @@
         "name":  "反乌托邦（SpuChestnut Remix） - 抵达彼岸Null",
         "src":  "music/反乌托邦（SpuChestnut Remix） - 抵达彼岸Null.mp3",
         "lrc":  "反乌托邦（SpuChestnut Remix） - 抵达彼岸Null"
+    },
+    {
+        "name":  "夜に駆ける",
+        "src":  "music/夜に駆ける.mp3",
+        "lrc":  ""
+    },
+    {
+        "name":  "室内系的TrackMaker (Melodic Minor版) - hanser",
+        "src":  "music/室内系的TrackMaker (Melodic Minor版) - hanser.mp3",
+        "lrc":  ""
+    },
+    {
+        "name":  "弥渡山歌 (PHONK) - 羊音乐",
+        "src":  "music/弥渡山歌 (PHONK) - 羊音乐.mp3",
+        "lrc":  ""
+    },
+    {
+        "name":  "神のまにまに",
+        "src":  "music/神のまにまに.mp3",
+        "lrc":  ""
     },
     {
         "name":  "精卫（万物终归向海） - 银翼杀手",
